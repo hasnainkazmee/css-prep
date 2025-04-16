@@ -1,205 +1,194 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getNotes, saveNote } from "@/utils/localStorage"
-import { ArrowLeft, Save, Download, Bold, Italic, List, Link } from "lucide-react"
+import { getSyllabus, getNote, getNotes } from "@/utils/localStorage"
+import { ArrowLeft, BookOpen } from "lucide-react"
+import type { Syllabus, Note } from "@/types"
+import { Progress } from "@/components/ui/progress"
 
 export default function Notes() {
   const router = useRouter()
-  const { subtopicId, subtopicName } = router.query
-  const [content, setContent] = useState("")
-  const [activeTab, setActiveTab] = useState("edit")
-  const [isSaved, setIsSaved] = useState(true)
+  const [syllabus, setSyllabus] = useState<Syllabus[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (subtopicId) {
-      const savedContent = getNotes(subtopicId as string)
-      setContent(savedContent)
+    setSyllabus(getSyllabus())
+    const notesData = getNotes()
+    setNotes(Array.isArray(notesData) ? notesData : Object.values(notesData))
+    setIsLoading(false)
+  }, [])
+
+  const getSubtopicStatus = (subject: string, topic: string, subtopic: string) => {
+    const note = notes.find(n => 
+      n.subject === subject && n.topic === topic && n.subtopic === subtopic
+    )
+    return note ? (note.content ? "completed" : "in-progress") : "not-started"
+  }
+
+  const getTopicProgress = (subject: string, topic: string) => {
+    const topicSubtopics = syllabus
+      .find(s => s.subject === subject)
+      ?.topics.find(t => t.topic === topic)
+      ?.subtopics || []
+    
+    const completedCount = topicSubtopics.filter(subtopic => 
+      getSubtopicStatus(subject, topic, subtopic.name) === "completed"
+    ).length
+    
+    return {
+      completed: completedCount,
+      total: topicSubtopics.length,
+      percentage: topicSubtopics.length ? Math.round((completedCount / topicSubtopics.length) * 100) : 0
     }
-  }, [subtopicId])
-
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value)
-    setIsSaved(false)
   }
 
-  const handleSave = () => {
-    if (subtopicId) {
-      saveNote(subtopicId as string, content)
-      setIsSaved(true)
+  const getSubjectProgress = (subject: string) => {
+    const subjectTopics = syllabus.find(s => s.subject === subject)?.topics || []
+    const allSubtopics = subjectTopics.flatMap(t => t.subtopics)
+    const completedCount = allSubtopics.filter(subtopic => 
+      subjectTopics.some(topic => getSubtopicStatus(subject, topic.topic, subtopic.name) === "completed")
+    ).length
+    
+    return {
+      completed: completedCount,
+      total: allSubtopics.length,
+      percentage: allSubtopics.length ? Math.round((completedCount / allSubtopics.length) * 100) : 0
     }
   }
 
-  const handleExport = () => {
-    // Create a blob with the content
-    const blob = new Blob([content], { type: "text/markdown" })
-    const url = URL.createObjectURL(blob)
-
-    // Create a temporary link and trigger download
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${subtopicName || "notes"}.md`
-    document.body.appendChild(a)
-    a.click()
-
-    // Clean up
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+  const handleSubtopicClick = (subject: string, topic: string, subtopic: string) => {
+    router.push(`/notes/edit?subject=${encodeURIComponent(subject)}&topic=${encodeURIComponent(topic)}&subtopic=${encodeURIComponent(subtopic)}`);
   }
 
-  const insertFormatting = (format: string) => {
-    const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
-    let newText = ""
-
-    switch (format) {
-      case "bold":
-        newText = `**${selectedText}**`
-        break
-      case "italic":
-        newText = `*${selectedText}*`
-        break
-      case "list":
-        newText = `\n- ${selectedText}`
-        break
-      case "link":
-        newText = `[${selectedText}](url)`
-        break
-      default:
-        newText = selectedText
-    }
-
-    const newContent = content.substring(0, start) + newText + content.substring(end)
-    setContent(newContent)
-    setIsSaved(false)
-
-    // Focus back on textarea and set cursor position
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + newText.length, start + newText.length)
-    }, 0)
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
   }
 
-  // Simple markdown to HTML converter
-  const renderMarkdown = (text: string) => {
-    if (!text) return ""
+  if (selectedSubject && selectedTopic) {
+    const subject = syllabus.find(s => s.subject === selectedSubject)
+    const topic = subject?.topics.find(t => t.topic === selectedTopic)
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedTopic(null)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">{selectedTopic}</h1>
+        </div>
 
-    // Convert headers
-    let html = text.replace(/^# (.*?)$/gm, "<h1>$1</h1>")
-    html = html.replace(/^## (.*?)$/gm, "<h2>$1</h2>")
-    html = html.replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {topic?.subtopics.map((subtopic) => {
+            const status = getSubtopicStatus(selectedSubject, selectedTopic, subtopic.name)
+            return (
+              <Card key={subtopic.name} className="cursor-pointer" onClick={() => handleSubtopicClick(selectedSubject, selectedTopic, subtopic.name)}>
+                <CardHeader>
+                  <CardTitle>{subtopic.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      status === "completed" ? "bg-green-100 text-green-800" :
+                      status === "in-progress" ? "bg-yellow-100 text-yellow-800" :
+                      "bg-gray-100 text-gray-800"
+                    }`}>
+                      {status === "completed" ? "Completed" :
+                       status === "in-progress" ? "In Progress" :
+                       "Not Started"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
-    // Convert bold and italic
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>")
+  if (selectedSubject) {
+    const subject = syllabus.find(s => s.subject === selectedSubject)
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedSubject(null)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">{selectedSubject}</h1>
+        </div>
 
-    // Convert lists
-    html = html.replace(/^- (.*?)$/gm, "<li>$1</li>")
-    html = html.replace(/(<li>.*?<\/li>)/gs, "<ul>$1</ul>")
-
-    // Convert links
-    html = html.replace(/\[(.*?)\]$$(.*?)$$/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-
-    // Convert line breaks
-    html = html.replace(/\n/g, "<br />")
-
-    return html
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {subject?.topics.map((topic) => {
+            const progress = getTopicProgress(selectedSubject, topic.topic)
+            return (
+              <Card key={topic.topic} className="cursor-pointer" onClick={() => setSelectedTopic(topic.topic)}>
+                <CardHeader>
+                  <CardTitle>{topic.topic}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{progress.completed} of {progress.total} completed</span>
+                    </div>
+                    <Progress value={progress.percentage} className="h-2" />
+                    <div className="text-sm text-muted-foreground">
+                      {topic.subtopics.length} subtopics
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-          <span className="sr-only">Back</span>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {subtopicName ? decodeURIComponent(subtopicName as string) : "Notes"}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">{isSaved ? "All changes saved" : "Unsaved changes"}</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={handleSave} disabled={isSaved}>
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-        </div>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">My Notes</h1>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle>Note Editor</CardTitle>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[200px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="edit">Edit</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          {activeTab === "edit" && (
-            <div className="flex space-x-1 mt-2">
-              <Button variant="outline" size="icon" onClick={() => insertFormatting("bold")}>
-                <Bold className="h-4 w-4" />
-                <span className="sr-only">Bold</span>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => insertFormatting("italic")}>
-                <Italic className="h-4 w-4" />
-                <span className="sr-only">Italic</span>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => insertFormatting("list")}>
-                <List className="h-4 w-4" />
-                <span className="sr-only">List</span>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => insertFormatting("link")}>
-                <Link className="h-4 w-4" />
-                <span className="sr-only">Link</span>
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="mt-0">
-            {activeTab === "edit" ? (
-              <textarea
-                id="markdown-editor"
-                className="w-full h-[60vh] p-4 border rounded-md font-mono text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={content}
-                onChange={handleContentChange}
-                placeholder="# Start typing your notes here...
-
-Use Markdown syntax for formatting:
-- # Header 1
-- ## Header 2
-- **Bold text**
-- *Italic text*
-- - List item
-- [Link text](url)"
-              ></textarea>
-            ) : (
-              <div
-                className="w-full h-[60vh] p-4 border rounded-md overflow-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-              ></div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {syllabus.map((subject) => {
+          const progress = getSubjectProgress(subject.subject)
+          return (
+            <Card key={subject.subject} className="cursor-pointer" onClick={() => setSelectedSubject(subject.subject)}>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  <CardTitle>{subject.subject}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{progress.completed} of {progress.total} completed</span>
+                  </div>
+                  <Progress value={progress.percentage} className="h-2" />
+                  <div className="text-sm text-muted-foreground">
+                    {subject.topics.length} topics
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
-}
+} 

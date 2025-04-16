@@ -1,36 +1,62 @@
-"use client"
-
-import { useEffect } from "react"
-import type { AppProps } from "next/app"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
-import Layout from "@/components/layout"
-import { initializeData } from "@/utils/localStorage"
+import { Inter } from "next/font/google"
 import "@/styles/globals.css"
+import Sidebar from "@/components/sidebar"
+import Header from "@/components/header"
+import { Toaster } from "@/components/ui/toaster"
+import { motion, AnimatePresence } from "framer-motion"
 
-export default function App({ Component, pageProps }: AppProps) {
+const inter = Inter({ subsets: ["latin"] })
+
+export default function App({ Component, pageProps }: any) {
   const router = useRouter()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isClient, setIsClient] = useState(false)
 
-  // Initialize localStorage data on client-side
   useEffect(() => {
-    // Check if we're on the client side
-    if (typeof window !== "undefined") {
-      initializeData()
+    setIsClient(true)
+  }, [])
 
-      // Handle initial 404 error by redirecting to home page if needed
-      if (router.pathname === "/_error" || router.pathname === "/404") {
-        router.replace("/")
-      }
+  // Redirect from error pages to home
+  useEffect(() => {
+    if (router.pathname === "/_error" || router.pathname === "/404") {
+      router.push("/")
     }
   }, [router])
 
-  // Prevent rendering until router is ready
-  if (!router.isReady) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>
+  if (!isClient) {
+    return null
   }
 
   return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
+    <div className={`${inter.className} min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors`}>
+      <div className="flex h-screen">
+        <motion.div 
+          className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          <Sidebar isOpen={isSidebarOpen} />
+        </motion.div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+          <AnimatePresence mode="wait">
+            <motion.main
+              key={router.pathname}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 p-4 transition-colors"
+            >
+              <Component {...pageProps} />
+            </motion.main>
+          </AnimatePresence>
+        </div>
+      </div>
+      <Toaster />
+    </div>
   )
 }

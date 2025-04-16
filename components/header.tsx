@@ -1,20 +1,17 @@
 "use client"
 
-import { Menu, X, Moon, Sun, Bell } from "lucide-react"
+import { Menu, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Switch } from "@/components/ui/switch"
 import { useRouter } from "next/router"
 import { useState, useEffect } from "react"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 interface HeaderProps {
   toggleSidebar: () => void
-  toggleRightPanel: () => void
-  isDarkMode: boolean
-  toggleDarkMode: () => void
 }
 
-export default function Header({ toggleSidebar, toggleRightPanel, isDarkMode, toggleDarkMode }: HeaderProps) {
+export default function Header({ toggleSidebar }: HeaderProps) {
   const router = useRouter()
   const [isClient, setIsClient] = useState(false)
 
@@ -49,11 +46,7 @@ export default function Header({ toggleSidebar, toggleRightPanel, isDarkMode, to
       </div>
 
       <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-2">
-          <Moon className={`h-4 w-4 ${isDarkMode ? "text-blue-400" : "text-gray-400"}`} />
-          <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} aria-label="Toggle dark mode" />
-          <Sun className={`h-4 w-4 ${!isDarkMode ? "text-amber-500" : "text-gray-400"}`} />
-        </div>
+        <ThemeToggle />
 
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -68,11 +61,6 @@ export default function Header({ toggleSidebar, toggleRightPanel, isDarkMode, to
           </Avatar>
           <span className="font-medium hidden md:inline">Ali</span>
         </div>
-
-        <Button variant="ghost" size="icon" onClick={toggleRightPanel} className="md:hidden">
-          <X className="h-5 w-5" />
-          <span className="sr-only">Toggle right panel</span>
-        </Button>
       </div>
     </header>
   )

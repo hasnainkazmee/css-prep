@@ -15,6 +15,9 @@ export default function ExamRoom() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [activeTab, setActiveTab] = useState("past-papers")
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   // Form state for adding new questions
   const [newQuestion, setNewQuestion] = useState("")
@@ -42,24 +45,36 @@ export default function ExamRoom() {
 
   const handleAddQuestion = () => {
     if (!newQuestion.trim() || options.some((opt) => !opt.trim()) || correctAnswer === null) {
+      setSubmitError("Please fill in all fields and select a correct answer")
       return
     }
 
-    const newQuestionObj: Question = {
-      id: Date.now().toString(),
-      question: newQuestion,
-      options: [...options],
-      correctAnswer,
+    setSubmitting(true)
+    setSubmitError(null)
+    setSubmitSuccess(false)
+
+    try {
+      const newQuestionObj: Question = {
+        id: Date.now().toString(),
+        question: newQuestion,
+        options: [...options],
+        correctAnswer,
+      }
+
+      const updatedQuestions = [...questions, newQuestionObj]
+      setQuestions(updatedQuestions)
+      updateQuestions(updatedQuestions)
+
+      // Reset form
+      setNewQuestion("")
+      setOptions(["", "", "", ""])
+      setCorrectAnswer(null)
+      setSubmitSuccess(true)
+    } catch (error) {
+      setSubmitError("Failed to add question. Please try again.")
+    } finally {
+      setSubmitting(false)
     }
-
-    const updatedQuestions = [...questions, newQuestionObj]
-    setQuestions(updatedQuestions)
-    updateQuestions(updatedQuestions)
-
-    // Reset form
-    setNewQuestion("")
-    setOptions(["", "", "", ""])
-    setCorrectAnswer(null)
   }
 
   const startQuiz = () => {
@@ -152,6 +167,7 @@ export default function ExamRoom() {
                     value={newQuestion}
                     onChange={(e) => setNewQuestion(e.target.value)}
                     placeholder="Enter your question here"
+                    disabled={submitting}
                   />
                 </div>
 
@@ -163,6 +179,7 @@ export default function ExamRoom() {
                       value={option}
                       onChange={(e) => handleOptionChange(index, e.target.value)}
                       placeholder={`Enter option ${index + 1}`}
+                      disabled={submitting}
                     />
                   </div>
                 ))}
@@ -181,10 +198,27 @@ export default function ExamRoom() {
                     ))}
                   </RadioGroup>
                 </div>
+
+                {submitError && (
+                  <div className="text-red-500 text-sm flex items-center space-x-1">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
+                {submitSuccess && (
+                  <div className="text-green-500 text-sm flex items-center space-x-1">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Question added successfully!</span>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
-                <Button onClick={handleAddQuestion} className="w-full">
-                  Add Question
+                <Button 
+                  onClick={handleAddQuestion}
+                  disabled={submitting}
+                  className="w-full"
+                >
+                  {submitting ? "Adding..." : "Add Question"}
                 </Button>
               </CardFooter>
             </Card>

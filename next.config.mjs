@@ -27,6 +27,9 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // Explicitly disable App Router
+  useFileSystemPublicRoutes: true,
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
 }
 
 if (userConfig) {

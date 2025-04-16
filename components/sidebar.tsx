@@ -1,176 +1,133 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/router"
-import {
-  LayoutDashboard,
-  BookOpen,
-  FileText,
-  PenTool,
-  BarChart2,
-  Settings,
-  HelpCircle,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react"
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { usePathname } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { BookOpen, HelpCircle, Home, Notebook, Settings, Target } from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean
 }
 
 export default function Sidebar({ isOpen }: SidebarProps) {
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     resources: false,
     help: false,
   })
 
-  const toggleExpand = (key: string) => {
-    setExpandedItems((prev) => ({
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleNavigation = (path: string) => {
+    if (mounted) {
+      router.push(path)
+    }
+  }
+
+  const toggleExpand = (item: string) => {
+    setExpandedItems(prev => ({
       ...prev,
-      [key]: !prev[key],
+      [item]: !prev[item]
     }))
   }
 
-  const isActive = (path: string) => router.pathname === path
-
-  const navItems = [
-    {
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      path: "/",
-    },
-    {
-      icon: BookOpen,
-      label: "Syllabus",
-      path: "/syllabus",
-    },
-    {
-      icon: FileText,
-      label: "Notes",
-      path: "/notes",
-    },
-    {
-      icon: PenTool,
-      label: "Exam Room",
-      path: "/exam-room",
-    },
-    {
-      icon: BarChart2,
-      label: "Progress",
-      path: "/progress",
-    },
-  ]
-
-  if (!isOpen) return null
+  if (!mounted) {
+    return (
+      <div className={cn(
+        "fixed left-0 top-0 h-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 z-50",
+        isOpen ? "w-64" : "w-0"
+      )} />
+    )
+  }
 
   return (
-    <aside className="w-64 bg-gray-100 dark:bg-gray-800 overflow-y-auto transition-all border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <nav className="p-4 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            href={item.path}
-            key={item.path}
-            className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-              isActive(item.path)
-                ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                : "hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
-          >
-            <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
-          </Link>
-        ))}
+    <div className={cn(
+      "fixed left-0 top-0 h-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 z-50",
+      isOpen ? "w-64" : "w-0"
+    )}>
+      <div className="h-full overflow-y-auto">
+        <nav className="p-4">
+          <div className="space-y-2">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/")}
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
 
-        <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <div
-            className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-            onClick={() => toggleExpand("resources")}
-          >
-            <div className="flex items-center space-x-3">
-              <BookOpen className="h-5 w-5" />
-              <span>Resources</span>
-            </div>
-            {expandedItems.resources ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/syllabus" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/syllabus")}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Syllabus
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/notes" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/notes")}
+            >
+              <Notebook className="mr-2 h-4 w-4" />
+              Notes
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/progress" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/progress")}
+            >
+              <Target className="mr-2 h-4 w-4" />
+              Progress
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/exam-room" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/exam-room")}
+            >
+              <Target className="mr-2 h-4 w-4" />
+              Exam Room
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                pathname === "/settings" && "bg-gray-100 dark:bg-gray-700"
+              )}
+              onClick={() => handleNavigation("/settings")}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
           </div>
-
-          {expandedItems.resources && (
-            <div className="ml-8 mt-1 space-y-1">
-              <Link
-                href="/resources/past-papers"
-                className={`block px-3 py-2 rounded-md transition-colors ${
-                  isActive("/resources/past-papers")
-                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                    : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                Past Papers
-              </Link>
-              <Link
-                href="/resources/articles"
-                className={`block px-3 py-2 rounded-md transition-colors ${
-                  isActive("/resources/articles")
-                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                    : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                Articles
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <div className="pt-2">
-          <div
-            className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-            onClick={() => toggleExpand("help")}
-          >
-            <div className="flex items-center space-x-3">
-              <HelpCircle className="h-5 w-5" />
-              <span>Help & Support</span>
-            </div>
-            {expandedItems.help ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </div>
-
-          {expandedItems.help && (
-            <div className="ml-8 mt-1 space-y-1">
-              <Link
-                href="/help/faq"
-                className={`block px-3 py-2 rounded-md transition-colors ${
-                  isActive("/help/faq")
-                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                    : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/help/contact"
-                className={`block px-3 py-2 rounded-md transition-colors ${
-                  isActive("/help/contact")
-                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                    : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                Contact Us
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <Link
-          href="/settings"
-          className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors mt-4 ${
-            isActive("/settings")
-              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-              : "hover:bg-gray-200 dark:hover:bg-gray-700"
-          }`}
-        >
-          <Settings className="h-5 w-5" />
-          <span>Settings</span>
-        </Link>
-      </nav>
-    </aside>
+        </nav>
+      </div>
+    </div>
   )
 }
